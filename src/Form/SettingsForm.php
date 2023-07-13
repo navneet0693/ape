@@ -7,30 +7,25 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\system\Plugin\Condition\RequestPath;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 class SettingsForm extends ConfigFormBase {
 
   /**
    * The date formatter service.
-   *
-   * @var \Drupal\Core\Datetime\DateFormatterInterface
    */
-  protected $dateFormatter;
+  protected DateFormatterInterface $dateFormatter;
 
   /**
-   * Alternatives Condition
-   *
-   * @var \Drupal\system\Plugin\Condition\RequestPath
+   * Alternatives Condition.
    */
-  protected $alternatives;
+  protected RequestPath $alternatives;
 
   /**
-   * Excluded Condition
-   *
-   * @var \Drupal\system\Plugin\Condition\RequestPath
+   * Excluded Condition.
    */
-  protected $excluded;
+  protected RequestPath $excluded;
 
   /**
    * Constructs a PerformanceForm object.
@@ -42,7 +37,8 @@ class SettingsForm extends ConfigFormBase {
    * @param \Drupal\Component\Plugin\Factory\FactoryInterface $plugin_factory
    *   Factory for condition plugin manager.
    */
-  public function __construct(ConfigFactoryInterface $config_factory, DateFormatterInterface $date_formatter, FactoryInterface $plugin_factory) {
+  public function __construct(ConfigFactoryInterface $config_factory,
+    protected DateFormatterInterface $date_formatter, FactoryInterface $plugin_factory) {
     parent::__construct($config_factory);
 
     $this->dateFormatter = $date_formatter;
@@ -88,24 +84,24 @@ class SettingsForm extends ConfigFormBase {
     $config_system = $this->config('system.performance');
     $config_ape = $this->config('ape.settings');
 
-    $form['page_caching'] = array(
+    $form['page_caching'] = [
       '#type' => 'fieldset',
       '#title' => $this->t('General page caching'),
       '#collapsible' => FALSE,
       '#collapsed' => FALSE,
-    );
+    ];
 
     $period = [0, 60, 180, 300, 600, 900, 1800, 2700, 3600, 10800, 21600, 32400, 43200, 86400, 604800, 2592000, 31536000];
-    $period = array_map(array($this->dateFormatter, 'formatInterval'), array_combine($period, $period));
+    $period = array_map($this->dateFormatter->formatInterval(...), array_combine($period, $period));
     $period[0] = '<' . $this->t('no caching') . '>';
 
-    $form['page_caching']['page_cache_maximum_age'] = array(
+    $form['page_caching']['page_cache_maximum_age'] = [
       '#type' => 'select',
       '#title' => $this->t('Global page expiration'),
       '#options' => $period,
       '#default_value' => $config_system->get('cache.page.max_age'),
       '#description' => $this->t('The standard expiration lifetime for cached pages. Ideally this is set as long as possible.'),
-    );
+    ];
 
     // Pages visibility plugin.
     $this->excluded->setConfig('pages', $config_ape->get('exclusions'));
@@ -113,19 +109,19 @@ class SettingsForm extends ConfigFormBase {
     unset($form['page_caching']['negate']);
     $form['page_caching']['pages']['#title'] = $this->t('Pages to exclude from caching');
 
-    $form['page_caching_alternative'] = array(
+    $form['page_caching_alternative'] = [
       '#type' => 'fieldset',
       '#title' => $this->t('Alternative page caching'),
       '#collapsible' => FALSE,
       '#collapsed' => FALSE,
-    );
-    $form['page_caching_alternative']['ape_alternative_lifetime'] = array(
+    ];
+    $form['page_caching_alternative']['ape_alternative_lifetime'] = [
       '#type' => 'select',
       '#title' => $this->t('Alternative page expiration'),
       '#options' => $period,
       '#default_value' => $config_ape->get('lifetime.alternatives'),
       '#description' => $this->t('An alternative page expiration lifetime. Useful for pages that should refresh at a different rate than most pages, such as a short interval like 5 minutes.'),
-    );
+    ];
 
     // Pages visibility plugin.
     $this->alternatives->setConfig('pages', $config_ape->get('alternatives'));
@@ -133,33 +129,33 @@ class SettingsForm extends ConfigFormBase {
     unset($form['page_caching_alternative']['negate']);
     $form['page_caching_alternative']['pages']['#title'] = $this->t('Pages that should apply alternative cache length');
 
-    $form['server_codes'] = array(
+    $form['server_codes'] = [
       '#type' => 'fieldset',
       '#title' => $this->t('Server response caching'),
       '#collapsible' => FALSE,
       '#collapsed' => FALSE,
-    );
-    $form['server_codes']['ape_301_lifetime'] = array(
+    ];
+    $form['server_codes']['ape_301_lifetime'] = [
       '#type' => 'select',
       '#title' => $this->t('301 Redirects Expiration'),
       '#options' => $period,
       '#default_value' => $config_ape->get('lifetime.301'),
       '#description' => $this->t('Set a cache lifetime for all 301 redirects.'),
-    );
-    $form['server_codes']['ape_302_lifetime'] = array(
+    ];
+    $form['server_codes']['ape_302_lifetime'] = [
       '#type' => 'select',
       '#title' => $this->t('302 Redirects Expiration'),
       '#options' => $period,
       '#default_value' => $config_ape->get('lifetime.302'),
       '#description' => $this->t('Set a cache lifetime for all 302 redirects.'),
-    );
-    $form['server_codes']['ape_404_lifetime'] = array(
+    ];
+    $form['server_codes']['ape_404_lifetime'] = [
       '#type' => 'select',
       '#title' => $this->t('404 Page Not Found Expiration'),
       '#options' => $period,
       '#default_value' => $config_ape->get('lifetime.404'),
       '#description' => $this->t('Set a cache lifetime for all 404 Page Not Found responses.'),
-    );
+    ];
 
     return parent::buildForm($form, $form_state);
   }

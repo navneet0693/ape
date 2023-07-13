@@ -3,7 +3,7 @@ services:
     class: Drupal\ape\EventSubscriber\ApeSubscriber
     tags:
       - { name: event_subscriber }
-    arguments: ['@config.factory', '@page_cache_request_policy', '@page_cache_response_policy', '@plugin.manager.condition']
+    arguments: ['@config.factory', '@page_cache_request_policy', '@page_cache_response_policy', '@plugin.manager.condition', '@module_handler']
 
   ape.page_cache_response_policy.exclude_pages:
     class: Drupal\ape\PageCache\ExcludePages

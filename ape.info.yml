@@ -1,8 +1,7 @@
 name: Advanced Page Expiration
 type: module
 description: 'Allows finer control of the Cache Control header.'
-core_version_requirement: ^8 || ^9
-version: 8.x-1.0
+core_version_requirement: ^9 || ^10
 package: Performance and scalability
 
 configure: ape.admin

@@ -2,10 +2,13 @@
 
 namespace Drupal\ape\EventSubscriber;
 
+use Drupal\Core\Config\Config;
+use Drupal\Core\Config\ImmutableConfig;
+use Drupal\Core\Extension\ModuleHandlerInterface;
+use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Drupal\Component\Plugin\Factory\FactoryInterface;
 use Drupal\Core\Cache\CacheableResponseInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-use Symfony\Component\HttpKernel\Event\FilterResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\PageCache\RequestPolicyInterface;
@@ -14,64 +17,46 @@ use Drupal\Core\PageCache\ResponsePolicyInterface;
 /**
  * Alter Cache-control header based on configuration of ape.
  *
- * Class ApeSubscriber
  * @package Drupal\ape\EventSubscriber
  */
 class ApeSubscriber implements EventSubscriberInterface {
 
   /**
    * A config object for the system performance configuration.
-   *
-   * @var \Drupal\Core\Config\Config
    */
-  protected $configApe;
+  protected Config|ImmutableConfig $configApe;
 
   /**
    * A config object for the system performance configuration.
-   *
-   * @var \Drupal\Core\Config\Config
    */
-  protected $configSystem;
+  protected Config|ImmutableConfig $configSystem;
 
-  /**
-   * A policy rule determining the cacheability of a request.
-   *
-   * @var \Drupal\Core\PageCache\RequestPolicyInterface
-   */
-  protected $requestPolicy;
-
-  /**
-   * A policy rule determining the cacheability of the response.
-   *
-   * @var \Drupal\Core\PageCache\ResponsePolicyInterface
-   */
-  protected $responsePolicy;
-
-  /**
-   * Condition plugin manager.
-   *
-   * @var \Drupal\Component\Plugin\Factory\FactoryInterface $plugin_factory
-   *   Factory for condition plugin manager.
-   */
-  protected $conditionManager;
-
-  public function __construct(ConfigFactoryInterface $config_factory, RequestPolicyInterface $request_policy, ResponsePolicyInterface $response_policy, FactoryInterface $plugin_factory) {
+  public function __construct(
+    ConfigFactoryInterface $config_factory,
+    /**
+     * A policy rule determining the cacheability of a request.
+     */
+    protected RequestPolicyInterface $requestPolicy,
+    /**
+     * A policy rule determining the cacheability of the response.
+     */
+    protected ResponsePolicyInterface $responsePolicy,
+    /**
+     * Condition plugin manager.
+     */
+    protected FactoryInterface $conditionManager,
+    protected ModuleHandlerInterface $moduleHandler,
+  ) {
     $this->configApe = $config_factory->get('ape.settings');
     $this->configSystem = $config_factory->get('system.performance');
-    $this->requestPolicy = $request_policy;
-    $this->responsePolicy = $response_policy;
-    $this->conditionManager = $plugin_factory;
   }
 
   /**
    * Sets extra headers on successful responses.
-   *
-   * @param \Symfony\Component\HttpKernel\Event\FilterResponseEvent $event
-   *   The event to process.
    */
-  public function onRespond(FilterResponseEvent $event) {
+  public function onRespond(ResponseEvent $event): void {
 
-    if (!$event->isMasterRequest()) {
+    if (!$event->isMainRequest()) {
       return;
     }
 
@@ -90,7 +75,7 @@ class ApeSubscriber implements EventSubscriberInterface {
     if (is_null($maxAge)) {
 
       // Check if request matches the alternatives, otherwise use default.
-      /* @var \Drupal\system\Plugin\Condition\RequestPath $condition */
+      /** @var \Drupal\system\Plugin\Condition\RequestPath $condition */
       $condition = $this->conditionManager->createInstance('request_path');
       $condition->setConfig('pages', $this->configApe->get('alternatives'));
 
@@ -125,7 +110,7 @@ class ApeSubscriber implements EventSubscriberInterface {
 
     // Allow max age to be altered by hook_ape_cache_alter().
     $originalMaxAge = $maxAge;
-    \Drupal::moduleHandler()->alter('ape_cache', $maxAge, $originalMaxAge);
+    $this->moduleHandler->alter('ape_cache', $maxAge, $originalMaxAge);
 
     // Finally set cache header.
     $this->setCacheHeader($event, $maxAge);
@@ -134,7 +119,7 @@ class ApeSubscriber implements EventSubscriberInterface {
   /**
    * Final cache check to respect defined cache policies and max age.
    *
-   * @param \Symfony\Component\HttpKernel\Event\FilterResponseEvent $event
+   * @param \Symfony\Component\HttpKernel\Event\ResponseEvent $event
    *   The event to process.
    *
    * @param int $maxAge
@@ -144,7 +129,7 @@ class ApeSubscriber implements EventSubscriberInterface {
    *   True if caching policies allow caching and max age is greater than 0,
    *   false if not.
    */
-  private function checkCacheable(FilterResponseEvent $event, $maxAge) {
+  private function checkCacheable(ResponseEvent $event, int $maxAge): bool {
     $request = $event->getRequest();
     $response = $event->getResponse();
 
@@ -156,13 +141,13 @@ class ApeSubscriber implements EventSubscriberInterface {
   /**
    * Sets the cache control header.
    *
-   * @param \Symfony\Component\HttpKernel\Event\FilterResponseEvent $event
+   * @param \Symfony\Component\HttpKernel\Event\ResponseEvent $event
    *   The event to process.
    *
    * @param int $maxAge
    *   The cache expiration age, in seconds.
    */
-  private function setCacheHeader(FilterResponseEvent $event, $maxAge) {
+  private function setCacheHeader(ResponseEvent $event, int $maxAge): void {
     $response = $event->getResponse();
 
     $value = 'no-cache, must-revalidate';
@@ -173,9 +158,14 @@ class ApeSubscriber implements EventSubscriberInterface {
     $response->headers->set('Cache-Control', $value);
   }
 
-  public static function getSubscribedEvents() {
+  /**
+   * {@inheritDoc}
+   */
+  public static function getSubscribedEvents(): array {
+    $events = [];
     // Respond after FinishResponseSubscriber by setting low priority.
-    $events[KernelEvents::RESPONSE][] = array('onRespond', -1024);
+    $events[KernelEvents::RESPONSE][] = ['onRespond', -1024];
     return $events;
   }
+
 }

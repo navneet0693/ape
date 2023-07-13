@@ -3,8 +3,6 @@
 namespace Drupal\ape_test\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
-use Drupal\Core\Url;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
  * Controller for ape testing.
@@ -26,4 +24,5 @@ class ApeTestController extends ControllerBase {
   public function redirect302() {
     return $this->redirect('ape.redirect.landing', [], [], 302);
   }
+
 }

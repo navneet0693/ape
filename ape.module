@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * @file
+ * Contains hooks and helper functions.
+ */
+
 use Drupal\Core\Form\FormStateInterface;
 /**
  * @file
@@ -21,7 +26,7 @@ function ape_help($route_name, RouteMatchInterface $route_match) {
     case 'help.page.ape':
       $output = '';
       $output .= '<p>' . t('The advanced page expiration module is a lightweight solution to allow the max age header (used by external caching mechanisms such as Varnish) to be set based on different criteria, such as path or redirect code. This allows for more advanced scenarios such as having the homepage expire every five minutes while the rest of the site expires in one hour.') . '</p>';
-      $output .= '<p>' . t('The <a href="@settings">settings page</a> explains the different options available. There is also Rules integration and an alter hook available for more complex integrations.', array('@settings' => Url::fromRoute('ape.admin')->toString())) . '</p>';
+      $output .= '<p>' . t('The <a href="@settings">settings page</a> explains the different options available. There is also Rules integration and an alter hook available for more complex integrations.', ['@settings' => Url::fromRoute('ape.admin')->toString()]) . '</p>';
       return $output;
   }
 }
