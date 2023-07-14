@@ -31,7 +31,13 @@ class ApeSubscriber implements EventSubscriberInterface {
    */
   protected Config|ImmutableConfig $configSystem;
 
+  /**
+   * Constructs the class object.
+   */
   public function __construct(
+    /**
+     * Configuration object.
+     */
     ConfigFactoryInterface $config_factory,
     /**
      * A policy rule determining the cacheability of a request.
@@ -45,6 +51,9 @@ class ApeSubscriber implements EventSubscriberInterface {
      * Condition plugin manager.
      */
     protected FactoryInterface $conditionManager,
+    /**
+     * Module hander services.
+     */
     protected ModuleHandlerInterface $moduleHandler,
   ) {
     $this->configApe = $config_factory->get('ape.settings');
@@ -52,7 +61,19 @@ class ApeSubscriber implements EventSubscriberInterface {
   }
 
   /**
+   * {@inheritDoc}
+   */
+  public static function getSubscribedEvents(): array {
+    $events = [];
+    // Respond after FinishResponseSubscriber by setting low priority.
+    $events[KernelEvents::RESPONSE][] = ['onRespond', -1024];
+    return $events;
+  }
+
+  /**
    * Sets extra headers on successful responses.
+   *
+   * @throws \Drupal\Component\Plugin\Exception\PluginException
    */
   public function onRespond(ResponseEvent $event): void {
 
@@ -135,7 +156,7 @@ class ApeSubscriber implements EventSubscriberInterface {
 
     $isCacheable = ($this->requestPolicy->check($request) === RequestPolicyInterface::ALLOW) && ($this->responsePolicy->check($response, $request) !== ResponsePolicyInterface::DENY);
 
-    return ($isCacheable && $maxAge > 0) ? TRUE : FALSE;
+    return $isCacheable && $maxAge > 0;
   }
 
   /**
@@ -143,7 +164,6 @@ class ApeSubscriber implements EventSubscriberInterface {
    *
    * @param \Symfony\Component\HttpKernel\Event\ResponseEvent $event
    *   The event to process.
-   *
    * @param int $maxAge
    *   The cache expiration age, in seconds.
    */
@@ -156,16 +176,6 @@ class ApeSubscriber implements EventSubscriberInterface {
       $value = 'public, max-age=' . $maxAge;
     }
     $response->headers->set('Cache-Control', $value);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  public static function getSubscribedEvents(): array {
-    $events = [];
-    // Respond after FinishResponseSubscriber by setting low priority.
-    $events[KernelEvents::RESPONSE][] = ['onRespond', -1024];
-    return $events;
   }
 
 }
